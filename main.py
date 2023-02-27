@@ -17,7 +17,7 @@ class AuxFunctions:
         return a - b
     
     def create_token(self, word):
-        if self.is_number(word):
+        if word.isdigit():
             return Token("number", int(word))
         elif word == "":
             return Token("EOF", None)
