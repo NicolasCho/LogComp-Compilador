@@ -1,72 +1,99 @@
 import sys
 import re
 
-class Compiler(object):
-    def __init__(self, argument):
-        self.argument = argument
-        self.order = self.parser()
-        self.result = self.calculator()
-
-    @property
-    def argument(self): 
-        return self._argument
-    
-    @argument.setter
-    def argument(self,value):
-        for word in value:
-            if not self.is_number(word):
-                if not self.is_operation(word) and word !=" ":
-                    raise Exception("Not a number or operator")
-        self._argument = value
-
-    @property
-    def order(self):
-        return self._order
-
-    @order.setter
-    def order(self, value):
-        if not value:
-            raise Exception("Empty expression")
-
-        i = 0
-        for element in value:
-            if (i%2 == 0 and self.is_operation(element)) or (i%2 == 1 and self.is_number(element)):
-                raise Exception("Invalid order of operands")
-            i += 1
-        if self.is_operation(value[-1]):
-            raise Exception("Expression cannot end with operator")
-        
-        self._order = value
-
-    def is_number(self, word):
+class AuxFunctions:
+    def is_number(self,word):
         return word >= '0' and word <= "9"
 
-    def is_operation(self, word):
+    def is_operator(self, word):
         return word == "+" or word == "-"
-                
-    def parser(self):
-        units = re.split('([+ -])', self.argument)
-        units = [item for item in units if item != ' ' and item != '']
-        return units             
-                
-    def adder(self,a ,b):
-        return a + b
     
-    def subtractor(self, a, b):
+    def validate_word(self, word):
+        return (self.is_number(word) or self.is_operator(word) or word==" ")
+    
+    def calculator(self, a, b,operator):
+        if operator == '+':
+            return a + b
         return a - b
+    
+    def create_token(self, word):
+        if self.is_number(word):
+            return Token("number", int(word))
+        elif word == "":
+            return Token("EOF", None)
+        else:
+            return Token("operator", word)
+ 
+    def run_tokenizer(self, code, curr_char):
+        token = ""
+        while curr_char < len(code):
+            if not self.validate_word(code[curr_char]):
+                raise Exception("Invalid character")
+            if code[curr_char] == " ":
+                if token != "":
+                    break
+            elif self.is_operator(code[curr_char]):
+                if token == "":
+                    token = code[curr_char]
+                    curr_char += 1
+                    break
+                else:
+                    break
+            else:
+                token += code[curr_char]
+            curr_char += 1
+        return token, curr_char
 
-    def calculator(self):
-        total = int(self.order[0])
-        i = 0
-        for element in self.order:
-            if element == "+":
-                total = self.adder(total, int(self.order[i+1]))
-            elif element == "-":
-                total = self.subtractor(total, int(self.order[i+1]))
-            i += 1
-        return total
-            
+class Token:
+    def __init__(self, type, value):
+        self.type = type
+        self.value = value 
+
+class Tokenizer(AuxFunctions):
+    def __init__(self, source, position, next):
+        self.source = source
+        self.position = position
+        self.next = next #Token
+
+    def selectNext(self):
+        next_token_literal, pos = self.run_tokenizer(self.source, self.position)
+        self.position = pos
+        self.next = self.create_token(next_token_literal)
+        return self.next
+
+class Parser(AuxFunctions):
+    tokenizer = None
+
+    def parseExpression(self):
+        n_token = 0
+        value = 0
+        while True:
+            curr_token = self.tokenizer.next
+            next_token = Parser.tokenizer.selectNext()
+            if n_token == 0:
+                if next_token.type == "operator":
+                    raise Exception("First token must be a number")
+                value = next_token.value
+            if curr_token.type == "number":
+                if next_token.type == "number":
+                    raise Exception("A number cannot be followed by another number")
+            if curr_token.type == "operator":
+                if next_token.type != "number":
+                    raise Exception("An operator can only be followed by a number")
+                value = self.calculator(value, next_token.value, curr_token.value)
+            n_token += 1
+            if next_token.type == "EOF":
+                break
+        if value is None:
+            return 0
+        return value
+    
+    def run(self, code):
+        Parser.tokenizer = Tokenizer(code, 0, Token(None, None))
+        return self.parseExpression()   
 
 if __name__ == "__main__":
-    a = Compiler(sys.argv[1])
-    print(a.result)
+    a = Parser()
+    b = a.run(sys.argv[1])
+    print(b)
+    
