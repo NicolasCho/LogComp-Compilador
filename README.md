@@ -5,4 +5,4 @@
 
 ## Diagrama sintático
 
-![Diagrama sintático](imgs/ds_roteiro1.png "DS")
+![Diagrama sintático](imgs/ds_roteiro2.png "DS")

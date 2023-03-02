@@ -6,7 +6,7 @@ class AuxFunctions:
         return word >= '0' and word <= "9"
 
     def is_operator(self, word):
-        return word == "+" or word == "-"
+        return word == "+" or word == "-" or word == "*" or word == "/"
     
     def validate_word(self, word):
         return (self.is_number(word) or self.is_operator(word) or word==" ")
@@ -14,7 +14,11 @@ class AuxFunctions:
     def calculator(self, a, b,operator):
         if operator == '+':
             return a + b
-        return a - b
+        elif operator == '-':
+            return a - b
+        elif operator == '*':
+            return a * b
+        return int(a / b)
     
     def create_token(self, word):
         if word.isdigit():
@@ -23,7 +27,24 @@ class AuxFunctions:
             return Token("EOF", None)
         else:
             return Token("operator", word)
- 
+
+class Token:
+    def __init__(self, type, value):
+        self.type = type
+        self.value = value 
+
+class Tokenizer(AuxFunctions):
+    def __init__(self, source, position, next):
+        self.source = source
+        self.position = position
+        self.next = next #Token
+
+    def selectNext(self):
+        next_token_literal, pos = self.run_tokenizer(self.source, self.position)
+        self.position = pos
+        self.next = self.create_token(next_token_literal)
+        return self.next
+    
     def run_tokenizer(self, code, curr_char):
         token = ""
         while curr_char < len(code):
@@ -44,56 +65,60 @@ class AuxFunctions:
             curr_char += 1
         return token, curr_char
 
-class Token:
-    def __init__(self, type, value):
-        self.type = type
-        self.value = value 
-
-class Tokenizer(AuxFunctions):
-    def __init__(self, source, position, next):
-        self.source = source
-        self.position = position
-        self.next = next #Token
-
-    def selectNext(self):
-        next_token_literal, pos = self.run_tokenizer(self.source, self.position)
-        self.position = pos
-        self.next = self.create_token(next_token_literal)
-        return self.next
-
 class Parser(AuxFunctions):
     tokenizer = None
 
     def parseExpression(self):
-        n_token = 0
-        value = 0
-        while True:
-            curr_token = self.tokenizer.next
-            next_token = Parser.tokenizer.selectNext()
-            if n_token == 0:
-                if next_token.type == "operator":
-                    raise Exception("First token must be a number")
-                value = next_token.value
-            if curr_token.type == "number":
-                if next_token.type == "number":
-                    raise Exception("A number cannot be followed by another number")
-            if curr_token.type == "operator":
-                if next_token.type != "number":
-                    raise Exception("An operator can only be followed by a number")
-                value = self.calculator(value, next_token.value, curr_token.value)
-            n_token += 1
-            if next_token.type == "EOF":
+        if self.is_operator(self.tokenizer.next.value):
+            raise Exception("First token must be a number")
+        val =  self.parseTerm()
+        while True:  
+            if self.tokenizer.next.type == "EOF":
                 break
-        if value is None:
-            return 0
-        return value
+            op = self.tokenizer.next.value
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type != "number":
+                raise Exception("An operator can only be followed by a number")
+            if op == '+' or op == '-':
+                val = self.calculator(val, self.parseTerm(), op)
+        if val is None:
+            raise Exception("Empty expression")
+        return val
+
+    def parseTerm(self):
+        val = self.tokenizer.next.value
+        self.tokenizer.selectNext()
+        while True:
+            if self.tokenizer.next.type == "number":
+                raise Exception("A number cannot be followed by another number")
+            if self.tokenizer.next.value == '*' or self.tokenizer.next.value == '/':
+                op = self.tokenizer.next.value
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type != "number":
+                    raise Exception("An operator can only be followed by a number")
+                val = self.calculator(val, self.tokenizer.next.value, op)
+                self.tokenizer.selectNext()
+            else:
+                break
+        return val
     
     def run(self, code):
-        Parser.tokenizer = Tokenizer(code, 0, Token(None, None))
+        pre_proc = PrePro.filter(code)
+        Parser.tokenizer = Tokenizer(pre_proc, 0, Token(None, None))
+        self.tokenizer.selectNext()
         return self.parseExpression()   
+
+class PrePro:
+    @staticmethod
+    def filter(source):
+        i = 0
+        while i < len(source):
+            if source[i] == "#":
+                break
+            i += 1
+        return source[:i]
 
 if __name__ == "__main__":
     a = Parser()
     b = a.run(sys.argv[1])
     print(b)
-    
