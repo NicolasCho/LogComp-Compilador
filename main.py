@@ -2,16 +2,18 @@ import sys
 import re
 
 class AuxFunctions:
-    def is_number(self,word):
+    symbols = ["+", "-", "*", "/", "(", ")"]
+
+    def is_digit(self,word):
         return word >= '0' and word <= "9"
 
-    def is_operator(self, word):
-        return word == "+" or word == "-" or word == "*" or word == "/"
+    def is_symbol(self, word):
+        return word in self.symbols
     
     def validate_word(self, word):
-        return (self.is_number(word) or self.is_operator(word) or word==" ")
+        return (self.is_digit(word) or self.is_symbol(word) or word==" ")
     
-    def calculator(self, a, b,operator):
+    def calculator(self, a, b, operator):
         if operator == '+':
             return a + b
         elif operator == '-':
@@ -26,7 +28,7 @@ class AuxFunctions:
         elif word == "":
             return Token("EOF", None)
         else:
-            return Token("operator", word)
+            return Token(word, None)
 
 class Token:
     def __init__(self, type, value):
@@ -53,15 +55,20 @@ class Tokenizer(AuxFunctions):
             if code[curr_char] == " ":
                 if token != "":
                     break
-            elif self.is_operator(code[curr_char]):
+                else:
+                    curr_char += 1
+                    pass
+
+            if self.is_digit(code[curr_char]):
+                token += code[curr_char]
+            else:
                 if token == "":
                     token = code[curr_char]
                     curr_char += 1
                     break
                 else:
                     break
-            else:
-                token += code[curr_char]
+                
             curr_char += 1
         return token, curr_char
 
@@ -69,43 +76,54 @@ class Parser(AuxFunctions):
     tokenizer = None
 
     def parseExpression(self):
-        if self.is_operator(self.tokenizer.next.value):
-            raise Exception("First token must be a number")
         val =  self.parseTerm()
-        while True:  
-            if self.tokenizer.next.type == "EOF":
+        while True: 
+            if self.tokenizer.next.type == "EOF" or self.tokenizer.next.type ==")":
                 break
-            op = self.tokenizer.next.value
-            self.tokenizer.selectNext()
-            if self.tokenizer.next.type != "number":
-                raise Exception("An operator can only be followed by a number")
-            if op == '+' or op == '-':
-                val = self.calculator(val, self.parseTerm(), op)
+            op = self.tokenizer.next.type
+            ret_val = self.parseTerm()
+            val = self.calculator(val, ret_val, op)
         if val is None:
             raise Exception("Empty expression")
         return val
 
     def parseTerm(self):
-        val = self.tokenizer.next.value
-        self.tokenizer.selectNext()
+        val = self.parseFactor()
         while True:
+            self.tokenizer.selectNext()
             if self.tokenizer.next.type == "number":
                 raise Exception("A number cannot be followed by another number")
-            if self.tokenizer.next.value == '*' or self.tokenizer.next.value == '/':
-                op = self.tokenizer.next.value
-                self.tokenizer.selectNext()
-                if self.tokenizer.next.type != "number":
-                    raise Exception("An operator can only be followed by a number")
-                val = self.calculator(val, self.tokenizer.next.value, op)
-                self.tokenizer.selectNext()
+            if self.tokenizer.next.type == '*' or self.tokenizer.next.type == '/':
+                op = self.tokenizer.next.type
+                ret_val = self.parseFactor()
+                val = self.calculator(val, ret_val, op)
             else:
                 break
         return val
     
+    def parseFactor(self):
+        self.tokenizer.selectNext()
+        token_type = self.tokenizer.next.type
+        if token_type == "number":
+            return self.tokenizer.next.value
+        elif token_type == "+" or token_type == "-":
+            op_value = token_type
+            ret_val = self.parseFactor()
+            if op_value == "-":
+                return -ret_val
+            else:
+                return ret_val
+        elif token_type == "(":
+            ret_val = self.parseExpression()
+            if self.tokenizer.next.type != ")":
+                raise Exception("Must close parenthesis")
+            return ret_val
+        else:
+            raise Exception ("ERROR")
+
     def run(self, code):
         pre_proc = PrePro.filter(code)
         Parser.tokenizer = Tokenizer(pre_proc, 0, Token(None, None))
-        self.tokenizer.selectNext()
         return self.parseExpression()   
 
 class PrePro:

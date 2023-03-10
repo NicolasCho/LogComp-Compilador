@@ -5,4 +5,10 @@
 
 ## Diagrama sintático
 
-![Diagrama sintático](imgs/ds_roteiro2.png "DS")
+![Diagrama sintático](imgs/ds_roteiro3.png "DS")
+
+## EBNF
+
+    EXPRESSION = TERM, { ("+" | "-"), TERM } ;
+    TERM = FACTOR, { ("*" | "/"), FACTOR } ;
+    FACTOR = ("+" | "-") FACTOR | "(" EXPRESSION ")" | number ;
