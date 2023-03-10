@@ -54,10 +54,11 @@ class Tokenizer(AuxFunctions):
                 raise Exception("Invalid character")
             if code[curr_char] == " ":
                 if token != "":
+                    curr_char += 1
                     break
                 else:
                     curr_char += 1
-                    pass
+                    continue
 
             if self.is_digit(code[curr_char]):
                 token += code[curr_char]
@@ -75,9 +76,11 @@ class Tokenizer(AuxFunctions):
 class Parser(AuxFunctions):
     tokenizer = None
 
-    def parseExpression(self):
+    def parseExpression(self, primary_parse = True):
         val =  self.parseTerm()
         while True: 
+            if primary_parse and self.tokenizer.next.type ==")":
+                raise Exception("Expression without opening parenthesis")
             if self.tokenizer.next.type == "EOF" or self.tokenizer.next.type ==")":
                 break
             op = self.tokenizer.next.type
@@ -114,7 +117,7 @@ class Parser(AuxFunctions):
             else:
                 return ret_val
         elif token_type == "(":
-            ret_val = self.parseExpression()
+            ret_val = self.parseExpression(primary_parse=False)
             if self.tokenizer.next.type != ")":
                 raise Exception("Must close parenthesis")
             return ret_val
