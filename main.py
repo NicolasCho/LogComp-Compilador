@@ -1,5 +1,6 @@
 import sys
 import re
+from abc import ABC, abstractmethod
 
 class AuxFunctions:
     symbols = ["+", "-", "*", "/", "(", ")"]
@@ -12,15 +13,6 @@ class AuxFunctions:
     
     def validate_word(self, word):
         return (self.is_digit(word) or self.is_symbol(word) or word==" ")
-    
-    def calculator(self, a, b, operator):
-        if operator == '+':
-            return a + b
-        elif operator == '-':
-            return a - b
-        elif operator == '*':
-            return a * b
-        return int(a / b)
     
     def create_token(self, word):
         if word.isdigit():
@@ -73,6 +65,40 @@ class Tokenizer(AuxFunctions):
             curr_char += 1
         return token, curr_char
 
+class Node(ABC):
+    def __init__(self, value, children):
+        self.value = value
+        self.children = children
+   
+    @abstractmethod
+    def Evaluate(self):
+        pass
+
+class BinOp(Node):
+    def Evaluate(self):
+        if self.value == "+":
+            return self.children[0].Evaluate() + self.children[1].Evaluate()
+        elif self.value == "-":
+            return self.children[0].Evaluate() - self.children[1].Evaluate() 
+        elif self.value == "*":
+            return self.children[0].Evaluate() * self.children[1].Evaluate() 
+        else:
+            return int(self.children[0].Evaluate() / self.children[1].Evaluate()) 
+
+class UnOp(Node):
+    def Evaluate(self):
+        if self.value == "+":
+            return self.children[0].Evaluate() 
+        return -self.children[0].Evaluate()
+
+class IntVal(Node):
+    def Evaluate(self):
+        return self.value    
+
+class NoOp(Node):
+    def Evaluate(self):
+        return None
+
 class Parser(AuxFunctions):
     tokenizer = None
 
@@ -85,7 +111,7 @@ class Parser(AuxFunctions):
                 break
             op = self.tokenizer.next.type
             ret_val = self.parseTerm()
-            val = self.calculator(val, ret_val, op)
+            val = BinOp(op,[val, ret_val])
         if val is None:
             raise Exception("Empty expression")
         return val
@@ -99,7 +125,7 @@ class Parser(AuxFunctions):
             if self.tokenizer.next.type == '*' or self.tokenizer.next.type == '/':
                 op = self.tokenizer.next.type
                 ret_val = self.parseFactor()
-                val = self.calculator(val, ret_val, op)
+                val = BinOp(op, [val, ret_val])
             else:
                 break
         return val
@@ -108,14 +134,11 @@ class Parser(AuxFunctions):
         self.tokenizer.selectNext()
         token_type = self.tokenizer.next.type
         if token_type == "number":
-            return self.tokenizer.next.value
+            return IntVal(self.tokenizer.next.value, None)
         elif token_type == "+" or token_type == "-":
             op_value = token_type
             ret_val = self.parseFactor()
-            if op_value == "-":
-                return -ret_val
-            else:
-                return ret_val
+            return UnOp(op_value, [ret_val])
         elif token_type == "(":
             ret_val = self.parseExpression(primary_parse=False)
             if self.tokenizer.next.type != ")":
@@ -141,5 +164,9 @@ class PrePro:
 
 if __name__ == "__main__":
     a = Parser()
-    b = a.run(sys.argv[1])
-    print(b)
+    file = sys.argv[1]
+    with open(file, 'r') as f:
+        expression = f.readline()
+    f.close()
+    b = a.run(expression)
+    print(b.Evaluate())
