@@ -2,7 +2,7 @@ import sys
 from ats import *
 
 class AuxFunctions:
-    symbols = ["+", "-", "*", "/", "(", ")","=","\\"]
+    symbols = ["+", "-", "*", "/", "(", ")","=","\n"]
 
     def is_digit(self,word):
         return word >= '0' and word <= "9"
@@ -57,17 +57,9 @@ class Tokenizer(AuxFunctions):
                     break
             elif char in self.symbols:
                 if token == "":
-                    if char == "\\":
-                        if code[curr_char + 1] == "n":
-                            token = "\\n"
-                            curr_char += 2
-                            break
-                        else:
-                            raise Exception ("Unknown symbol")
-                    else:
-                        token = char
-                        curr_char += 1
-                        break
+                    token = char
+                    curr_char += 1
+                    break
                 else:
                     break
             elif char.isdigit():
@@ -93,7 +85,7 @@ class Parser(AuxFunctions):
             block.children.append(val)
             if self.tokenizer.next.type == "EOF":
                 break
-            elif self.tokenizer.next.type == "\\n":
+            elif self.tokenizer.next.type == "\n":
                 val  = self.parseStatement()
             else:
                 raise Exception("Error")
@@ -102,9 +94,9 @@ class Parser(AuxFunctions):
     def parseStatement(self):
         self.tokenizer.selectNext()
         curr_token = self.tokenizer.next.type
-        if curr_token == "\\n" or curr_token =="EOF":
+        if curr_token == "\n" or curr_token =="EOF":
             return NoOp(None, None)
-        elif curr_token == "print":
+        elif curr_token == "println":
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != "(":
                 raise Exception ("Syntax error")
@@ -173,28 +165,24 @@ class Parser(AuxFunctions):
 
 class PrePro:
     @staticmethod
-    def filter(source):
-        source = source.replace("'", "")
-        
+    def filter(source):        
         source_proc = ""
         write = True
         i = 0
         while i < len(source):
             if source[i] == "#":
                 write = False
-            elif source[i] == "\\":
-                if source[i+1] == "n":
-                    write = True
+            elif source[i] == "\n":
+                write = True
             if write:
                 source_proc += source[i]
             i += 1
-
         return source_proc
 
 if __name__ == "__main__":
     a = Parser()
     file = sys.argv[1]
     with open(file, 'r') as f:
-        code = repr(f.read())
+        code = f.read()
     b = a.run(code)
     b.Evaluate()
