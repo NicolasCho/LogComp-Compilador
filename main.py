@@ -1,18 +1,11 @@
 import sys
-import re
-from abc import ABC, abstractmethod
+from ats import *
 
 class AuxFunctions:
-    symbols = ["+", "-", "*", "/", "(", ")"]
+    symbols = ["+", "-", "*", "/", "(", ")","=","\\"]
 
     def is_digit(self,word):
         return word >= '0' and word <= "9"
-
-    def is_symbol(self, word):
-        return word in self.symbols
-    
-    def validate_word(self, word):
-        return (self.is_digit(word) or self.is_symbol(word) or word==" ")
     
     def create_token(self, word):
         if word.isdigit():
@@ -21,6 +14,18 @@ class AuxFunctions:
             return Token("EOF", None)
         else:
             return Token(word, None)
+        
+class SymbolTable:
+    table = {}
+
+    def getter(self, sym):
+        try:
+            return self.table[sym]
+        except:
+            raise Exception("Variable not found")
+    
+    def setter(self, sym, val):
+        self.table[sym] = val
 
 class Token:
     def __init__(self, type, value):
@@ -42,72 +47,86 @@ class Tokenizer(AuxFunctions):
     def run_tokenizer(self, code, curr_char):
         token = ""
         while curr_char < len(code):
-            if not self.validate_word(code[curr_char]):
-                raise Exception("Invalid character")
-            if code[curr_char] == " ":
-                if token != "":
-                    curr_char += 1
-                    break
-                else:
+            char = code[curr_char]
+            if char == " ":
+                if token == "":
                     curr_char += 1
                     continue
-
-            if self.is_digit(code[curr_char]):
-                token += code[curr_char]
-            else:
-                if token == "":
-                    token = code[curr_char]
+                else:
                     curr_char += 1
                     break
+            elif char in self.symbols:
+                if token == "":
+                    if char == "\\":
+                        if code[curr_char + 1] == "n":
+                            token = "\\n"
+                            curr_char += 2
+                            break
+                        else:
+                            raise Exception ("Unknown symbol")
+                    else:
+                        token = char
+                        curr_char += 1
+                        break
                 else:
                     break
-                
-            curr_char += 1
+            elif char.isdigit():
+                token += char
+                curr_char += 1
+                continue
+            else:
+                if token.isdigit():
+                    raise Exception("Variable can't start with number")
+                else:
+                    token += char
+                    curr_char += 1
+                    continue
         return token, curr_char
-
-class Node(ABC):
-    def __init__(self, value, children):
-        self.value = value
-        self.children = children
-   
-    @abstractmethod
-    def Evaluate(self):
-        pass
-
-class BinOp(Node):
-    def Evaluate(self):
-        if self.value == "+":
-            return self.children[0].Evaluate() + self.children[1].Evaluate()
-        elif self.value == "-":
-            return self.children[0].Evaluate() - self.children[1].Evaluate() 
-        elif self.value == "*":
-            return self.children[0].Evaluate() * self.children[1].Evaluate() 
-        else:
-            return int(self.children[0].Evaluate() / self.children[1].Evaluate()) 
-
-class UnOp(Node):
-    def Evaluate(self):
-        if self.value == "+":
-            return self.children[0].Evaluate() 
-        return -self.children[0].Evaluate()
-
-class IntVal(Node):
-    def Evaluate(self):
-        return self.value    
-
-class NoOp(Node):
-    def Evaluate(self):
-        return None
 
 class Parser(AuxFunctions):
     tokenizer = None
 
-    def parseExpression(self, primary_parse = True):
+    def parseBlock(self):
+        block = Block(None, [])
+        val = self.parseStatement()
+        while True:
+            block.children.append(val)
+            if self.tokenizer.next.type == "EOF":
+                break
+            elif self.tokenizer.next.type == "\\n":
+                val  = self.parseStatement()
+            else:
+                raise Exception("Error")
+        return block
+    
+    def parseStatement(self):
+        self.tokenizer.selectNext()
+        curr_token = self.tokenizer.next.type
+        if curr_token == "\\n" or curr_token =="EOF":
+            return NoOp(None, None)
+        elif curr_token == "print":
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type != "(":
+                raise Exception ("Syntax error")
+            
+            val = self.parseExpression()
+            
+            if self.tokenizer.next.type != ")":
+                raise Exception ("Syntax error")
+            self.tokenizer.selectNext()
+            return PrintNode(None, [val])
+        else:
+            ident = Identifier(curr_token,[])
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type != "=":
+                raise Exception("Assignement error")
+            val = self.parseExpression()
+            return Assignement(None, [ident, val])
+
+    def parseExpression(self):
         val =  self.parseTerm()
         while True: 
-            if primary_parse and self.tokenizer.next.type ==")":
-                raise Exception("Expression without opening parenthesis")
-            if self.tokenizer.next.type == "EOF" or self.tokenizer.next.type ==")":
+            if self.tokenizer.next.type != "+" and self.tokenizer.next.type !="-":
                 break
             op = self.tokenizer.next.type
             ret_val = self.parseTerm()
@@ -140,33 +159,42 @@ class Parser(AuxFunctions):
             ret_val = self.parseFactor()
             return UnOp(op_value, [ret_val])
         elif token_type == "(":
-            ret_val = self.parseExpression(primary_parse=False)
+            ret_val = self.parseExpression()
             if self.tokenizer.next.type != ")":
                 raise Exception("Must close parenthesis")
             return ret_val
         else:
-            raise Exception ("ERROR")
+            return Identifier(token_type, [])
 
     def run(self, code):
         pre_proc = PrePro.filter(code)
         Parser.tokenizer = Tokenizer(pre_proc, 0, Token(None, None))
-        return self.parseExpression()   
+        return self.parseBlock()   
 
 class PrePro:
     @staticmethod
     def filter(source):
+        source = source.replace("'", "")
+        
+        source_proc = ""
+        write = True
         i = 0
         while i < len(source):
             if source[i] == "#":
-                break
+                write = False
+            elif source[i] == "\\":
+                if source[i+1] == "n":
+                    write = True
+            if write:
+                source_proc += source[i]
             i += 1
-        return source[:i]
+
+        return source_proc
 
 if __name__ == "__main__":
     a = Parser()
     file = sys.argv[1]
     with open(file, 'r') as f:
-        expression = f.readline()
-    f.close()
-    b = a.run(expression)
-    print(b.Evaluate())
+        code = repr(f.read())
+    b = a.run(code)
+    b.Evaluate()
