@@ -25,6 +25,8 @@ class SymbolTable:
             raise Exception("Variable not found")
     
     def setter(self, sym, val):
+        if sym == "number":
+            raise Exception("Not a valid variable")
         self.table[sym] = val
 
 class Token:
