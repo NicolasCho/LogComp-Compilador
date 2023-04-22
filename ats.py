@@ -21,6 +21,16 @@ class BinOp(Node):
             return self.children[0].Evaluate() - self.children[1].Evaluate() 
         elif self.value == "*":
             return self.children[0].Evaluate() * self.children[1].Evaluate() 
+        elif self.value == "&&":
+            return self.children[0].Evaluate() and self.children[1].Evaluate()
+        elif self.value == "||":
+            return self.children[0].Evaluate() or self.children[1].Evaluate()
+        elif self.value == "==":
+            return self.children[0].Evaluate() == self.children[1].Evaluate()
+        elif self.value == ">":
+            return self.children[0].Evaluate() > self.children[1].Evaluate()
+        elif self.value == "<":
+            return self.children[0].Evaluate() < self.children[1].Evaluate()
         else:
             return int(self.children[0].Evaluate() / self.children[1].Evaluate()) 
 
@@ -28,7 +38,10 @@ class UnOp(Node):
     def Evaluate(self):
         if self.value == "+":
             return self.children[0].Evaluate() 
-        return -self.children[0].Evaluate()
+        elif self.value == "-":
+            return -self.children[0].Evaluate()
+        else:
+            return not self.children[0].Evaluate()
 
 class IntVal(Node):
     def Evaluate(self):
@@ -54,3 +67,19 @@ class Block(Node):
     def Evaluate(self):
         for child in self.children:
             child.Evaluate()
+
+class ReadlnNode(Node):
+    def Evaluate(self):
+        return int(input())
+    
+class WhileNode(Node):
+    def Evaluate(self):
+        while self.children[0].Evaluate():
+            self.children[1].Evaluate()
+
+class IfNode(Node):
+    def Evaluate(self):
+        if self.children[0].Evaluate():
+            self.children[1].Evaluate()
+        else:
+            self.children[2].Evaluate()

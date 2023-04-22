@@ -5,7 +5,7 @@
 
 ## Diagrama sintático
 
-![Diagrama sintático](imgs/ds_roteiro5.jpeg "DS")
+![Diagrama sintático](imgs/ds_roteiro6.jpg "DS")
 
 ## EBNF
 

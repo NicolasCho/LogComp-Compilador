@@ -2,8 +2,7 @@ import sys
 from ats import *
 
 class AuxFunctions:
-    symbols = ["+", "-", "*", "/", "(", ")","=","\n"]
-
+    symbols = ["+", "-", "*", "/", "(", ")", "=", "\n", "==", ">", "<", "|","||", "&","&&", "!"]
     def is_digit(self,word):
         return word >= '0' and word <= "9"
     
@@ -17,6 +16,7 @@ class AuxFunctions:
         
 class SymbolTable:
     table = {}
+    reserved_words = ["while", "println", "if", "else", "readline"]
 
     def getter(self, sym):
         try:
@@ -27,6 +27,8 @@ class SymbolTable:
     def setter(self, sym, val):
         if sym == "number":
             raise Exception("Not a valid variable")
+        if sym in self.reserved_words:
+            raise Exception("{} is a reserved word".format(sym))
         self.table[sym] = val
 
 class Token:
@@ -57,24 +59,38 @@ class Tokenizer(AuxFunctions):
                 else:
                     curr_char += 1
                     break
-            elif char in self.symbols:
+            elif char in self.symbols:  #Verifica simbolos
                 if token == "":
-                    token = char
+                    token += char
                     curr_char += 1
-                    break
+                    continue
+                elif token == "=" or token == "|" or token == "&":
+                    if char == '\n':
+                        break
+                    token += char
+                    curr_char += 1
+                    if token not in self.symbols:
+                        raise Exception("Unrecognizable symbol!")
+                    continue
                 else:
                     break
-            elif char.isdigit():
+            elif char.isdigit():        #Verifica dígitos
+                if token in self.symbols:
+                    break
                 token += char
                 curr_char += 1
                 continue
-            else:
-                if token.isdigit():
+            elif (char >= 'a' and char <= 'z') or (char >= 'A' and char <= 'Z'):   #Verifica caracteres
+                if token in self.symbols:
+                    break
+                elif token.isdigit():
                     raise Exception("Variable can't start with number")
                 else:
                     token += char
                     curr_char += 1
                     continue
+            else:
+                raise Exception ("Unrecognizable character!")
         return token, curr_char
 
 class Parser(AuxFunctions):
@@ -82,49 +98,101 @@ class Parser(AuxFunctions):
 
     def parseBlock(self):
         block = Block(None, [])
-        val = self.parseStatement()
         while True:
-            block.children.append(val)
+            self.tokenizer.selectNext()
             if self.tokenizer.next.type == "EOF":
                 break
-            elif self.tokenizer.next.type == "\n":
-                val  = self.parseStatement()
-            else:
-                raise Exception("Error")
+            statement_val  = self.parseStatement()
+            block.children.append(statement_val)  
         return block
     
     def parseStatement(self):
-        self.tokenizer.selectNext()
         curr_token = self.tokenizer.next.type
-        if curr_token == "\n" or curr_token =="EOF":
-            return NoOp(None, None)
+        return_node = None
+        if curr_token == "\n":
+            return_node = NoOp(None, None)
         elif curr_token == "println":
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != "(":
                 raise Exception ("Syntax error")
-            
-            val = self.parseExpression()
-            
+            val = self.parseRelExpression()
             if self.tokenizer.next.type != ")":
                 raise Exception ("Syntax error")
             self.tokenizer.selectNext()
-            return PrintNode(None, [val])
+            return_node = PrintNode(None, [val])
+        elif curr_token == "while":
+            while_block = Block(None, [])
+            condition = self.parseRelExpression()
+            if self.tokenizer.next.type != "\n":
+                raise Exception("Syntax error")
+            while True:
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type == "end":
+                    break
+                statement_val = self.parseStatement()
+                while_block.children.append(statement_val)  
+            self.tokenizer.selectNext()
+            return_node = WhileNode(None, [condition,while_block])
+        elif curr_token == "if":
+            if_block = Block(None,[])
+            else_block = Block(None,[])
+            condition = self.parseRelExpression()
+            if self.tokenizer.next.type != "\n":
+                raise Exception("Syntax error")
+            while True:
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type == "end" or self.tokenizer.next.type == "else":
+                    break
+                statement_val = self.parseStatement()
+                if_block.children.append(statement_val)
+            if self.tokenizer.next.type == "else":
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type != "\n":
+                    raise Exception("Syntax error")
+                while True:
+                    self.tokenizer.selectNext()
+                    if self.tokenizer.next.type == "end":
+                        break
+                    statement_val = self.parseStatement()
+                    else_block.children.append(statement_val)
+            self.tokenizer.selectNext()
+            return_node = IfNode(None,[condition,if_block,else_block])
         else:
             ident = Identifier(curr_token,[])
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != "=":
                 raise Exception("Assignement error")
-            val = self.parseExpression()
-            return Assignement(None, [ident, val])
+            val = self.parseRelExpression()
+            return_node = Assignement(None, [ident, val])
+
+        if self.tokenizer.next.type != "\n":
+            raise Exception("Syntax error")
+        return return_node
+    
+    def parseRelExpression(self):
+        val = self.parseExpression()
+        while True: 
+            token_type = self.tokenizer.next.type
+            if token_type == "==" or token_type == ">" or token_type == "<":
+                op = self.tokenizer.next.type
+                ret_val = self.parseTerm()
+                val = BinOp(op,[val, ret_val])
+            else:
+                break
+        if val is None:
+            raise Exception("Empty expression")
+        return val
 
     def parseExpression(self):
         val =  self.parseTerm()
         while True: 
-            if self.tokenizer.next.type != "+" and self.tokenizer.next.type !="-":
+            token_type = self.tokenizer.next.type
+            if token_type == "+" or token_type == "-" or token_type == "||":
+                op = self.tokenizer.next.type
+                ret_val = self.parseTerm()
+                val = BinOp(op,[val, ret_val])
+            else:
                 break
-            op = self.tokenizer.next.type
-            ret_val = self.parseTerm()
-            val = BinOp(op,[val, ret_val])
         if val is None:
             raise Exception("Empty expression")
         return val
@@ -133,9 +201,10 @@ class Parser(AuxFunctions):
         val = self.parseFactor()
         while True:
             self.tokenizer.selectNext()
+            token_type = self.tokenizer.next.type
             if self.tokenizer.next.type == "number":
                 raise Exception("A number cannot be followed by another number")
-            if self.tokenizer.next.type == '*' or self.tokenizer.next.type == '/':
+            if token_type == '*' or token_type == '/' or token_type == '&&':
                 op = self.tokenizer.next.type
                 ret_val = self.parseFactor()
                 val = BinOp(op, [val, ret_val])
@@ -148,15 +217,23 @@ class Parser(AuxFunctions):
         token_type = self.tokenizer.next.type
         if token_type == "number":
             return IntVal(self.tokenizer.next.value, None)
-        elif token_type == "+" or token_type == "-":
+        elif token_type == "+" or token_type == "-" or token_type == "!": 
             op_value = token_type
             ret_val = self.parseFactor()
             return UnOp(op_value, [ret_val])
         elif token_type == "(":
-            ret_val = self.parseExpression()
+            ret_val = self.parseRelExpression()
             if self.tokenizer.next.type != ")":
                 raise Exception("Must close parenthesis")
             return ret_val
+        elif token_type == "readline":
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type != "(":
+                raise Exception ("Syntax error")
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type != ")":
+                raise Exception ("Syntax error")
+            return ReadlnNode(None,[]) 
         else:
             return Identifier(token_type, [])
 
