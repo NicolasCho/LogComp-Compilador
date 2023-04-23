@@ -80,7 +80,7 @@ class Tokenizer(AuxFunctions):
                 token += char
                 curr_char += 1
                 continue
-            elif (char >= 'a' and char <= 'z') or (char >= 'A' and char <= 'Z'):   #Verifica caracteres
+            elif (char >= 'a' and char <= 'z') or (char >= 'A' and char <= 'Z') or char == "_":   #Verifica caracteres
                 if token in self.symbols:
                     break
                 elif token.isdigit():
@@ -175,7 +175,7 @@ class Parser(AuxFunctions):
             token_type = self.tokenizer.next.type
             if token_type == "==" or token_type == ">" or token_type == "<":
                 op = self.tokenizer.next.type
-                ret_val = self.parseTerm()
+                ret_val = self.parseExpression()
                 val = BinOp(op,[val, ret_val])
             else:
                 break
