@@ -2,7 +2,8 @@ import sys
 from ats import *
 
 class AuxFunctions:
-    symbols = ["+", "-", "*", "/", "(", ")", "=", "\n", "==", ">", "<", "|","||", "&","&&", "!"]
+    symbols = ["+", "-", "*", "/", "(", ")", "=", "\n", "==", ">", "<", "|","||", "&","&&", "!", '"', ".",":","::"]
+    types = ["String", "Int"]
     def is_digit(self,word):
         return word >= '0' and word <= "9"
     
@@ -11,6 +12,8 @@ class AuxFunctions:
             return Token("number", int(word))
         elif word == "":
             return Token("EOF", None)
+        elif word in self.types:
+            return Token("Type", word)
         else:
             return Token(word, None)
         
@@ -60,11 +63,24 @@ class Tokenizer(AuxFunctions):
                     curr_char += 1
                     break
             elif char in self.symbols:  #Verifica simbolos
+                if char == '"':
+                    if token == "(" or token ==".":
+                        break
+                    while True:
+                        token += code[curr_char]
+                        curr_char += 1
+                        if curr_char == len(code):
+                            raise Exception("Missing string end")
+                        if code[curr_char] == '"':
+                            token += code[curr_char]
+                            curr_char += 1
+                            break
+                    break
                 if token == "":
                     token += char
                     curr_char += 1
                     continue
-                elif token == "=" or token == "|" or token == "&":
+                elif token == "=" or token == "|" or token == "&" or token == ":":
                     if char == '\n':
                         break
                     token += char
@@ -160,11 +176,22 @@ class Parser(AuxFunctions):
         else:
             ident = Identifier(curr_token,[])
             self.tokenizer.selectNext()
-            if self.tokenizer.next.type != "=":
-                raise Exception("Assignement error")
-            val = self.parseRelExpression()
-            return_node = Assignement(None, [ident, val])
-
+            if self.tokenizer.next.type == "=":
+                val = self.parseRelExpression()
+                return_node = Assignement(None, [ident, val])
+            elif self.tokenizer.next.type == "::":
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type != "Type":
+                   raise Exception("Expected var type")
+                var_type = self.tokenizer.next.value
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type == "=":
+                    val = self.parseRelExpression()
+                    return_node = VarDeclar(var_type, [ident, val])
+                else:
+                    return_node = VarDeclar(var_type, [ident, NoOp(None, None)])
+            else:
+                raise Exception ("Identifier error")
         if self.tokenizer.next.type != "\n":
             raise Exception("Syntax error")
         return return_node
@@ -191,6 +218,10 @@ class Parser(AuxFunctions):
                 op = self.tokenizer.next.type
                 ret_val = self.parseTerm()
                 val = BinOp(op,[val, ret_val])
+            elif token_type == ".":
+                op = self.tokenizer.next.type
+                ret_val = self.parseTerm()
+                val = ConcOp(None,[val, ret_val])
             else:
                 break
         if val is None:
@@ -217,6 +248,8 @@ class Parser(AuxFunctions):
         token_type = self.tokenizer.next.type
         if token_type == "number":
             return IntVal(self.tokenizer.next.value, None)
+        elif token_type[0] == '"':
+            return StrVal(self.tokenizer.next.type[1:-1], None)
         elif token_type == "+" or token_type == "-" or token_type == "!": 
             op_value = token_type
             ret_val = self.parseFactor()
