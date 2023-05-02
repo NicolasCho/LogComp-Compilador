@@ -15,6 +15,9 @@ class Node(ABC):
 
 class BinOp(Node):
     def Evaluate(self):
+        if self.value == "==":
+            return ("Int",int(self.children[0].Evaluate()[1] == self.children[1].Evaluate()[1]))
+        
         #Avalia se os tipos são compatíveis
         if self.children[0].Evaluate()[0] != self.children[1].Evaluate()[0]:
             raise Exception ("Incompatible types")
@@ -29,12 +32,10 @@ class BinOp(Node):
             return ("Int",self.children[0].Evaluate()[1] and self.children[1].Evaluate()[1])
         elif self.value == "||":
             return ("Int",self.children[0].Evaluate()[1] or self.children[1].Evaluate()[1])
-        elif self.value == "==":
-            return ("Int",self.children[0].Evaluate()[1] == self.children[1].Evaluate()[1])
         elif self.value == ">":
-            return ("Int",self.children[0].Evaluate()[1] > self.children[1].Evaluate()[1])
+            return ("Int",int(self.children[0].Evaluate()[1] > self.children[1].Evaluate()[1]))
         elif self.value == "<":
-            return ("Int",self.children[0].Evaluate()[1] < self.children[1].Evaluate()[1])
+            return ("Int",int(self.children[0].Evaluate()[1] < self.children[1].Evaluate()[1]))
         else:
             return ("Int",int(self.children[0].Evaluate()[1] / self.children[1].Evaluate()[1]))
 
@@ -73,6 +74,9 @@ class PrintNode(Node):
 
 class Assignement(Node):
     def Evaluate(self):
+        if self.children[0].value in symbol_table.table:
+            if self.children[1].Evaluate()[0] != symbol_table.table[self.children[0].value][0]:
+                raise Exception("Trying to assign different variable type")
         symbol_table.setter(self.children[0].value, self.children[1].Evaluate())
 
 class Block(Node):
@@ -98,6 +102,9 @@ class IfNode(Node):
 
 class VarDeclar(Node):
     def Evaluate(self):
+        if self.children[0].value in symbol_table.table:
+            raise Exception("Variable already declared")
+        
         if self.value == "Int":
             if self.children[1].Evaluate() is None:
                 symbol_table.setter(self.children[0].value, (self.value, 0))

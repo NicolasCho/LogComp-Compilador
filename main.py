@@ -27,7 +27,7 @@ class SymbolTable:
         except:
             raise Exception("Variable not found")
     
-    def setter(self, sym, val):
+    def setter(self, sym, val): 
         if sym == "number":
             raise Exception("Not a valid variable")
         if sym in self.reserved_words:
