@@ -74,10 +74,11 @@ class PrintNode(Node):
 
 class Assignement(Node):
     def Evaluate(self):
+        value = self.children[1].Evaluate()
         if self.children[0].value in symbol_table.table:
-            if self.children[1].Evaluate()[0] != symbol_table.table[self.children[0].value][0]:
+            if value[0] != symbol_table.table[self.children[0].value][0]: #error
                 raise Exception("Trying to assign different variable type")
-        symbol_table.setter(self.children[0].value, self.children[1].Evaluate())
+        symbol_table.setter(self.children[0].value, value)
 
 class Block(Node):
     def Evaluate(self):
