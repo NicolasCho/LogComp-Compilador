@@ -1,4 +1,6 @@
 import sys
+import os
+import globals
 from ats import *
 
 class AuxFunctions:
@@ -19,7 +21,16 @@ class AuxFunctions:
         
 class SymbolTable:
     table = {}
+    sp = 4
     reserved_words = ["while", "println", "if", "else", "readline"]
+
+    def declaration(self, sym, val):
+        # if sym == "number":
+        #     raise Exception("Not a valid variable")
+        if sym in self.reserved_words:
+            raise Exception("{} is a reserved word".format(sym))
+        self.table[sym] = val
+        self.sp += 4
 
     def getter(self, sym):
         try:
@@ -27,9 +38,9 @@ class SymbolTable:
         except:
             raise Exception("Variable not found")
     
-    def setter(self, sym, val): 
-        if sym == "number":
-            raise Exception("Not a valid variable")
+    def setter(self, sym, val, ): 
+        # if sym == "number":
+        #     raise Exception("Not a valid variable")
         if sym in self.reserved_words:
             raise Exception("{} is a reserved word".format(sym))
         self.table[sym] = val
@@ -292,9 +303,18 @@ class PrePro:
         return source_proc
 
 if __name__ == "__main__":
+    globals.initialize()
     a = Parser()
     file = sys.argv[1]
     with open(file, 'r') as f:
         code = f.read()
+    asm_file = os.path.splitext(file)[0] + ".asm"
+    globals.asm_file = asm_file
+    with open(asm_file, 'w') as f:
+        with open("cabecalho.txt", "r") as c:
+            f.write(c.read())
     b = a.run(code)
     b.Evaluate()
+    with open(asm_file,"a") as f:
+        with open("rodape.txt", "r") as r:
+            f.write("\n\n"+r.read())
