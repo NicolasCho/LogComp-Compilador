@@ -140,18 +140,18 @@ class Parser(AuxFunctions):
             return_node = NoOp(None, None)
         elif curr_token == "println":
             self.tokenizer.selectNext()
-            if self.tokenizer.next.type != "(":
-                raise Exception ("Syntax error")
+            # if self.tokenizer.next.type != "(":
+            #     raise Exception ("Syntax error")
             val = self.parseRelExpression()
-            if self.tokenizer.next.type != ")":
-                raise Exception ("Syntax error")
+            # if self.tokenizer.next.type != ")":
+            #     raise Exception ("Syntax error")
             self.tokenizer.selectNext()
             return_node = PrintNode(None, [val])
         elif curr_token == "while":
             while_block = Block(None, [])
             condition = self.parseRelExpression()
-            if self.tokenizer.next.type != "\n":
-                raise Exception("Syntax error")
+            # if self.tokenizer.next.type != "\n":
+            #     raise Exception("Syntax error")
             while True:
                 self.tokenizer.selectNext()
                 if self.tokenizer.next.type == "end":
@@ -164,8 +164,8 @@ class Parser(AuxFunctions):
             if_block = Block(None,[])
             else_block = Block(None,[])
             condition = self.parseRelExpression()
-            if self.tokenizer.next.type != "\n":
-                raise Exception("Syntax error")
+            # if self.tokenizer.next.type != "\n":
+            #     raise Exception("Syntax error")
             while True:
                 self.tokenizer.selectNext()
                 if self.tokenizer.next.type == "end" or self.tokenizer.next.type == "else":
@@ -174,12 +174,12 @@ class Parser(AuxFunctions):
                 if_block.children.append(statement_val)
             if self.tokenizer.next.type == "else":
                 self.tokenizer.selectNext()
-                if self.tokenizer.next.type != "\n":
-                    raise Exception("Syntax error")
+                # if self.tokenizer.next.type != "\n":
+                #     raise Exception("Syntax error")
                 while True:
                     self.tokenizer.selectNext()
-                    if self.tokenizer.next.type == "end":
-                        break
+                    # if self.tokenizer.next.type == "end":
+                    #     break
                     statement_val = self.parseStatement()
                     else_block.children.append(statement_val)
             self.tokenizer.selectNext()
@@ -192,8 +192,8 @@ class Parser(AuxFunctions):
                 return_node = Assignement(None, [ident, val])
             elif self.tokenizer.next.type == "::":
                 self.tokenizer.selectNext()
-                if self.tokenizer.next.type != "Type":
-                   raise Exception("Expected var type")
+                # if self.tokenizer.next.type != "Type":
+                #    raise Exception("Expected var type")
                 var_type = self.tokenizer.next.value
                 self.tokenizer.selectNext()
                 if self.tokenizer.next.type == "=":
@@ -201,10 +201,10 @@ class Parser(AuxFunctions):
                     return_node = VarDeclar(var_type, [ident, val])
                 else:
                     return_node = VarDeclar(var_type, [ident, NoOp(None, None)])
-            else:
-                raise Exception ("Identifier error")
-        if self.tokenizer.next.type != "\n":
-            raise Exception("Syntax error")
+            # else:
+            #     raise Exception ("Identifier error")
+        # if self.tokenizer.next.type != "\n":
+        #     raise Exception("Syntax error")
         return return_node
     
     def parseRelExpression(self):
@@ -272,11 +272,11 @@ class Parser(AuxFunctions):
             return ret_val
         elif token_type == "readline":
             self.tokenizer.selectNext()
-            if self.tokenizer.next.type != "(":
-                raise Exception ("Syntax error")
+            # if self.tokenizer.next.type != "(":
+            #     raise Exception ("Syntax error")
             self.tokenizer.selectNext()
-            if self.tokenizer.next.type != ")":
-                raise Exception ("Syntax error")
+            # if self.tokenizer.next.type != ")":
+            #     raise Exception ("Syntax error")
             return ReadlnNode(None,[]) 
         else:
             return Identifier(token_type, [])
