@@ -172,7 +172,7 @@ class IfNode(Node):
         left_child_eval = self.children[0].Evaluate()
         writeASM("CMP EBX, False")
 
-        if len(self.children == 3):  # Condição if/else presente
+        if len(self.children) == 3:  # Condição if/else presente
             writeASM("JE ELSE_{}".format(self.id))
             self.children[1].Evaluate()
             writeASM("JMP EXIT_{}".format(self.id))
