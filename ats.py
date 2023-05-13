@@ -11,15 +11,15 @@ def writeASM(asm_code):
 
 class Node(ABC):
     i = 0
-
     def __init__(self, value, children):
         self.value = value
         self.children = children
-        self.id = self.newId(self)
-    
-    @staticmethod
+        self.id = self.newId()
+
+ 
     def newId(self):
-        return self.i + 1
+        Node.i += 1
+        return Node.i
 
     @abstractmethod
     def Evaluate(self):
@@ -123,7 +123,7 @@ class PrintNode(Node):
         writeASM("PUSH EBX")
         writeASM("CALL print")
         writeASM("POP EBX")
-        print(print_val[1])
+        #print(print_val[1])
 
 class Assignement(Node):
     def Evaluate(self):
@@ -168,21 +168,21 @@ class WhileNode(Node):
 
 class IfNode(Node):
     def Evaluate(self):
-        writeASM("if_{}:".format(self.id))
+        writeASM("IF_{}:".format(self.id))
         left_child_eval = self.children[0].Evaluate()
         writeASM("CMP EBX, False")
 
-        if len(self.children) == 3:  # Condição if/else presente
+        if self.children[2].value is None:  #  Apenas if
+            writeASM("JE EXIT_{}".format(self.id))
+            self.children[1].Evaluate()
+            writeASM("JMP EXIT_{}".format(self.id))
+            writeASM("EXIT_{}:".format(self.id))
+        else:                              # Condição if/else presente
             writeASM("JE ELSE_{}".format(self.id))
             self.children[1].Evaluate()
             writeASM("JMP EXIT_{}".format(self.id))
             writeASM("ELSE_{}:".format(self.id))
             self.children[2].Evaluate()
-            writeASM("EXIT_{}:".format(self.id))
-        else:                          # Apenas if
-            writeASM("JE EXIT_{}".format(self.id))
-            self.children[1].Evaluate()
-            writeASM("JMP EXIT_{}".format(self.id))
             writeASM("EXIT_{}:".format(self.id))
 
 class VarDeclar(Node):
