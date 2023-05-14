@@ -42,40 +42,32 @@ class BinOp(Node):
         if self.value == "+":
             writeASM("ADD EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",None)
         elif self.value == "-":
             writeASM("SUB EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",None)
         elif self.value == "*":
             writeASM("IMUL EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",None)
         elif self.value == "&&":
             writeASM("AND EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",None)
         elif self.value == "||":
             writeASM("OR EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",None)
         elif self.value == "==":
             writeASM("CMP EAX, EBX")
             writeASM("CALL binop_je")
-            return ("Int",None)
         elif self.value == ">":
             writeASM("CMP EAX, EBX")
             writeASM("CALL binop_jg")
-            return ("Int",None)
         elif self.value == "<":
             writeASM("CMP EAX, EBX")
             writeASM("CALL binop_jl")
-            return ("Int",None)
         elif self.value == "/":
             writeASM("DIV EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",None)
-
+        return ("Int",None)
+    
 #Não implementado para asm
 class ConcOp(Node):
     def Evaluate(self):
@@ -129,13 +121,12 @@ class Assignement(Node):
     def Evaluate(self):
         symbol = self.children[0].value
         value = self.children[1].Evaluate()  #Faz o asm do filho da direita (MOV EBX, value)
-
         if symbol in symbol_table.table:    # Se o símbolo já existe na table
             if value[0] != symbol_table.table[self.children[0].value][0]: # Se os tipos são divergentes
                 raise Exception("Trying to assign different variable type")
             sp = symbol_table.getter(symbol)[2] 
             writeASM("MOV [EBP-{}], EBX".format(sp)) 
-            symbol_table.setter(symbol, ([value[0], value[1], sp]))
+            #symbol_table.setter(symbol, ([value[0], value[1], sp]))
         else:
             sp = symbol_table.sp
             writeASM("PUSH DWORD 0")
@@ -171,8 +162,7 @@ class IfNode(Node):
         writeASM("IF_{}:".format(self.id))
         left_child_eval = self.children[0].Evaluate()
         writeASM("CMP EBX, False")
-
-        if self.children[2].value is None:  #  Apenas if
+        if len(self.children[2].children)==0:  #  Apenas if
             writeASM("JE EXIT_{}".format(self.id))
             self.children[1].Evaluate()
             writeASM("JMP EXIT_{}".format(self.id))
@@ -189,4 +179,4 @@ class VarDeclar(Node):
     def Evaluate(self):
         sp = symbol_table.sp
         writeASM("PUSH DWORD 0")
-        symbol_table.declaration(self.children[0].value, (self.value, 0, sp))
+        symbol_table.declaration(self.children[0].value, (self.value, None, sp))

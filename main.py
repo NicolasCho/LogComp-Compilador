@@ -178,8 +178,8 @@ class Parser(AuxFunctions):
                 #     raise Exception("Syntax error")
                 while True:
                     self.tokenizer.selectNext()
-                    # if self.tokenizer.next.type == "end":
-                    #     break
+                    if self.tokenizer.next.type == "end":
+                        break
                     statement_val = self.parseStatement()
                     else_block.children.append(statement_val)
             self.tokenizer.selectNext()
