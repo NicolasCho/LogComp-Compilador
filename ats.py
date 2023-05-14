@@ -42,39 +42,39 @@ class BinOp(Node):
         if self.value == "+":
             writeASM("ADD EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",left_eval[1] + right_eval[1])
+            return ("Int",None)
         elif self.value == "-":
             writeASM("SUB EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",left_eval[1] - right_eval[1])
+            return ("Int",None)
         elif self.value == "*":
             writeASM("IMUL EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",left_eval[1] * right_eval[1])
+            return ("Int",None)
         elif self.value == "&&":
             writeASM("AND EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",left_eval[1] and right_eval[1])
+            return ("Int",None)
         elif self.value == "||":
             writeASM("OR EAX, EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",left_eval[1] or right_eval[1])
+            return ("Int",None)
         elif self.value == "==":
             writeASM("CMP EAX, EBX")
             writeASM("CALL binop_je")
-            return ("Int",int(left_eval[1] == right_eval[1]))
+            return ("Int",None)
         elif self.value == ">":
             writeASM("CMP EAX, EBX")
             writeASM("CALL binop_jg")
-            return ("Int",int(left_eval[1] > right_eval[1]))
+            return ("Int",None)
         elif self.value == "<":
             writeASM("CMP EAX, EBX")
             writeASM("CALL binop_jl")
-            return ("Int",int(left_eval[1] < right_eval[1]))
-        else:
-            writeASM("IDIV EBX")
+            return ("Int",None)
+        elif self.value == "/":
+            writeASM("DIV EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int",int(left_eval[1] / right_eval[1]))
+            return ("Int",None)
 
 #Não implementado para asm
 class ConcOp(Node):
@@ -86,21 +86,21 @@ class UnOp(Node):
         child_value = self.children[0].Evaluate()
         if self.value == "+":
             writeASM("ADD EBX, 0")
-            return ("Int", child_value[1])
+            return ("Int",None)
         elif self.value == "-":
             writeASM("MOV EAX, {}".format(child_value[1]))
             writeASM("MOV EBX, -1")
             writeASM("IMUL EBX")
             writeASM("MOV EBX, EAX")
-            return ("Int", -child_value[1])
+            return ("Int", None)
         else:
             writeASM("NEG EBX")
-            return ("Int", not child_value[1])
+            return ("Int", None)
 
 class IntVal(Node):
     def Evaluate(self):
         writeASM ("MOV EBX, {}".format(self.value))
-        return ("Int", self.value)
+        return ("Int",None)
 
 #Não implementado para asm
 class StrVal(Node):
@@ -115,7 +115,7 @@ class Identifier(Node):
     def Evaluate(self):
         ident_val = symbol_table.getter(self.value)
         writeASM("MOV EBX, [EBP - {}]".format(ident_val[2]))
-        return ident_val
+        #return ident_val
 
 class PrintNode(Node):
     def Evaluate(self):
@@ -139,7 +139,7 @@ class Assignement(Node):
         else:
             sp = symbol_table.sp
             writeASM("PUSH DWORD 0")
-            writeASM("MOV [EBP-{}], EBX".format(sp)) 
+            # writeASM("MOV [EBP-{}], EBX".format(sp)) 
             symbol_table.declaration(symbol, ([value[0], value[1], symbol_table.sp]))
 
 
@@ -187,28 +187,6 @@ class IfNode(Node):
 
 class VarDeclar(Node):
     def Evaluate(self):
-        if self.children[0].value in symbol_table.table:
-            raise Exception("Variable already declared")
-        
-        declar_value = self.children[1].Evaluate()
-        if self.value == "Int":
-            if declar_value is None:   # X::Int
-                sp = symbol_table.sp
-                writeASM("PUSH DWORD 0")
-                symbol_table.declaration(self.children[0].value, (self.value, 0, sp))
-            else:                                       # X::Int = 1
-                if declar_value[0]!="Int":
-                    raise Exception ("Not an Integer")
-                sp = symbol_table.sp
-                writeASM("MOV EBX, {}".format(declar_value[1]))
-                writeASM("PUSH DWORD 0")
-                writeASM("MOV [EBP-{}], EBX".format(sp))
-                symbol_table.declaration(self.children[0].value, (self.value, declar_value[1], sp))
-        else:
-            # String (não implementado)
-            if declar_value is None:
-                symbol_table.setter(self.children[0].value, (self.value, ""))
-            else:
-                if declar_value[0]!="String":
-                    raise Exception ("Not a String")
-                symbol_table.setter(self.children[0].value, (self.value, declar_value[1]))
+        sp = symbol_table.sp
+        writeASM("PUSH DWORD 0")
+        symbol_table.declaration(self.children[0].value, (self.value, 0, sp))
