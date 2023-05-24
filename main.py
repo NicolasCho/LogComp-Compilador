@@ -1,25 +1,11 @@
 import sys
 from ats import *
 
-class AuxFunctions:
-    symbols = ["+", "-", "*", "/", "(", ")", "=", "\n", "==", ">", "<", "|","||", "&","&&", "!", '"', ".",":","::"]
-    types = ["String", "Int"]
-    def is_digit(self,word):
-        return word >= '0' and word <= "9"
-    
-    def create_token(self, word):
-        if word.isdigit():
-            return Token("number", int(word))
-        elif word == "":
-            return Token("EOF", None)
-        elif word in self.types:
-            return Token("Type", word)
-        else:
-            return Token(word, None)
-        
+#------------------------------------------------------------#
+
 class SymbolTable:
     table = {}
-    reserved_words = ["while", "println", "if", "else", "readline"]
+    reserved_words = ["while", "println", "if", "else", "readline", "function", "return"]
 
     def getter(self, sym):
         try:
@@ -33,6 +19,39 @@ class SymbolTable:
         if sym in self.reserved_words:
             raise Exception("{} is a reserved word".format(sym))
         self.table[sym] = val
+
+    def create(self, sym, val):
+        if sym in self.table:
+            raise Exception("Variable already declared")
+        self.table[sym] = val
+
+class FuncTable:
+    table = {}
+
+    def getter(self, func_key):
+        return self.table[func_key]
+    
+    def setter(self, func_key, func_value):
+        self.table[func_key] = func_value
+
+#---------------------------------------------------------------#
+
+class AuxFunctions:
+    symbols = ["+", "-", "*", "/", "(", ")", "=", "\n", "==", ">", "<",
+                "|","||", "&","&&", "!", '"', ".", ":", "::", ","]
+    types = ["String", "Int"]
+    def is_digit(self,word):
+        return word >= '0' and word <= "9"
+    
+    def create_token(self, word):
+        if word.isdigit():
+            return Token("number", int(word))
+        elif word == "":
+            return Token("EOF", None)
+        elif word in self.types:
+            return Token("Type", word)
+        else:
+            return Token(word, None)
 
 class Token:
     def __init__(self, type, value):
@@ -109,6 +128,8 @@ class Tokenizer(AuxFunctions):
                 raise Exception ("Unrecognizable character!")
         return token, curr_char
 
+#----------------------------------------------------#
+
 class Parser(AuxFunctions):
     tokenizer = None
 
@@ -131,6 +152,7 @@ class Parser(AuxFunctions):
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != "(":
                 raise Exception ("Syntax error")
+            self.tokenizer.selectNext()
             val = self.parseRelExpression()
             if self.tokenizer.next.type != ")":
                 raise Exception ("Syntax error")
@@ -138,6 +160,7 @@ class Parser(AuxFunctions):
             return_node = PrintNode(None, [val])
         elif curr_token == "while":
             while_block = Block(None, [])
+            self.tokenizer.selectNext()
             condition = self.parseRelExpression()
             if self.tokenizer.next.type != "\n":
                 raise Exception("Syntax error")
@@ -152,6 +175,7 @@ class Parser(AuxFunctions):
         elif curr_token == "if":
             if_block = Block(None,[])
             else_block = Block(None,[])
+            self.tokenizer.selectNext()
             condition = self.parseRelExpression()
             if self.tokenizer.next.type != "\n":
                 raise Exception("Syntax error")
@@ -173,10 +197,61 @@ class Parser(AuxFunctions):
                     else_block.children.append(statement_val)
             self.tokenizer.selectNext()
             return_node = IfNode(None,[condition,if_block,else_block])
+
+        elif curr_token == "function":
+            self.tokenizer.selectNext()
+            func_ident = Identifier(curr_token, [])
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type != "(":
+                raise Exception ("Error in function declaration")
+            self.tokenizer.selectNext()
+            arg_list = []
+            if self.tokenizer.next.type != ")":
+                while True:
+                    arg_ident = Identifier(self.tokenizer.next.type, [])
+                    self.tokenizer.selectNext()
+                    if self.tokenizer.next.type != "::":
+                        raise Exception("Must declare argument type")
+                    self.tokenizer.selectNext()
+                    if self.tokenizer.next.type != "Type":
+                        raise Exception("Expected var type")
+                    arg_list.append(VarDec(self.tokenizer.next.value, [arg_ident, NoOp(None, None)]))
+                    self.tokenizer.selectNext()
+                    if self.tokenizer.next.type == ")":
+                        break
+                    if self.tokenizer.next.type != ",":
+                        raise Exception("Arguments must be separated by commas")
+                    self.tokenizer.selectNext()
+            self.tokenizer.selectNext()  
+            if self.tokenizer.next.type != "::":
+                raise Exception("Must declare function return type")
+            self.tokenizer.selectNext()  
+            if self.tokenizer.next.type != "Type":
+                raise Exception("Expected function return type")
+            func_ret_type =  self.tokenizer.next.value
+            self.tokenizer.selectNext()  
+            if self.tokenizer.next.type != "\n":
+                raise Exception("Must init new line")
+            func_block = Block(None,[])
+            while True:
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type == "end":
+                    break
+                statement_val = self.parseStatement()
+                func_block.children.append(statement_val)
+            self.tokenizer.selectNext() 
+            return_node = FuncDec(func_ret_type, [func_ident, arg_list, func_block])
+
+        elif curr_token == "return":
+            self.tokenizer.selectNext()
+            ret_val = self.parseRelExpression()
+            return_node = RetNode(None, [ret_val])
+
         else:
             ident = Identifier(curr_token,[])
             self.tokenizer.selectNext()
             if self.tokenizer.next.type == "=":
+                self.tokenizer.selectNext()
                 val = self.parseRelExpression()
                 return_node = Assignement(None, [ident, val])
             elif self.tokenizer.next.type == "::":
@@ -186,12 +261,28 @@ class Parser(AuxFunctions):
                 var_type = self.tokenizer.next.value
                 self.tokenizer.selectNext()
                 if self.tokenizer.next.type == "=":
+                    self.tokenizer.selectNext()
                     val = self.parseRelExpression()
-                    return_node = VarDeclar(var_type, [ident, val])
+                    return_node = VarDec(var_type, [ident, val])
                 else:
-                    return_node = VarDeclar(var_type, [ident, NoOp(None, None)])
+                    return_node = VarDec(var_type, [ident, NoOp(None, None)])
+            elif self.tokenizer.next.type == "(":
+                call_node = FuncCall(ident.value, [])
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type != ")":
+                    while True:
+                        ret_val = self.parseRelExpression()
+                        call_node.children.append(ret_val)
+                        if self.tokenizer.next.type == ")":
+                            break
+                        if self.tokenizer.next.type != ",":
+                            raise Exception("Arguments must be separated by commas")
+                        self.tokenizer.selectNext()
+                return_node = call_node
+                self.tokenizer.selectNext()
             else:
                 raise Exception ("Identifier error")
+            
         if self.tokenizer.next.type != "\n":
             raise Exception("Syntax error")
         return return_node
@@ -231,7 +322,7 @@ class Parser(AuxFunctions):
     def parseTerm(self):
         val = self.parseFactor()
         while True:
-            self.tokenizer.selectNext()
+            #self.tokenizer.selectNext()
             token_type = self.tokenizer.next.type
             if self.tokenizer.next.type == "number":
                 raise Exception("A number cannot be followed by another number")
@@ -244,21 +335,26 @@ class Parser(AuxFunctions):
         return val
     
     def parseFactor(self):
-        self.tokenizer.selectNext()
+        #self.tokenizer.selectNext()
         token_type = self.tokenizer.next.type
         if token_type == "number":
-            return IntVal(self.tokenizer.next.value, None)
+            ret_node = IntVal(self.tokenizer.next.value, None)
+            self.tokenizer.selectNext()
         elif token_type[0] == '"':
-            return StrVal(self.tokenizer.next.type[1:-1], None)
+            ret_node = StrVal(self.tokenizer.next.type[1:-1], None)
+            self.tokenizer.selectNext()
         elif token_type == "+" or token_type == "-" or token_type == "!": 
             op_value = token_type
             ret_val = self.parseFactor()
-            return UnOp(op_value, [ret_val])
+            ret_node = UnOp(op_value, [ret_val])
+            self.tokenizer.selectNext()
         elif token_type == "(":
+            self.tokenizer.selectNext()
             ret_val = self.parseRelExpression()
             if self.tokenizer.next.type != ")":
                 raise Exception("Must close parenthesis")
-            return ret_val
+            ret_node = ret_val
+            self.tokenizer.selectNext()
         elif token_type == "readline":
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != "(":
@@ -266,9 +362,28 @@ class Parser(AuxFunctions):
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != ")":
                 raise Exception ("Syntax error")
-            return ReadlnNode(None,[]) 
+            ret_node = ReadlnNode(None,[]) 
+            self.tokenizer.selectNext()
         else:
-            return Identifier(token_type, [])
+            ident_node = Identifier(token_type, [])
+            self.tokenizer.selectNext()
+            if self.tokenizer.next.type == "(":
+                call_node = FuncCall(ident_node.value, [])
+                self.tokenizer.selectNext()
+                if self.tokenizer.next.type != ")":
+                    while True:
+                        ret_val = self.parseRelExpression()
+                        call_node.children.append(ret_val)
+                        if self.tokenizer.next.type == ")":
+                            break
+                        if self.tokenizer.next.type != ",":
+                            raise Exception("Arguments must be separated by commas")
+                        self.tokenizer.selectNext()
+                ret_node = call_node
+            else:
+                ret_node = ident_node
+        return ret_node
+
 
     def run(self, code):
         pre_proc = PrePro.filter(code)
