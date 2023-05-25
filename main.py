@@ -200,7 +200,7 @@ class Parser(AuxFunctions):
 
         elif curr_token == "function":
             self.tokenizer.selectNext()
-            func_ident = Identifier(curr_token, [])
+            func_ident = Identifier(self.tokenizer.next.type, [])
             self.tokenizer.selectNext()
             if self.tokenizer.next.type != "(":
                 raise Exception ("Error in function declaration")
@@ -419,4 +419,4 @@ if __name__ == "__main__":
     with open(file, 'r') as f:
         code = f.read()
     b = a.run(code)
-    b.Evaluate()
+    b.Evaluate(symbol_table)

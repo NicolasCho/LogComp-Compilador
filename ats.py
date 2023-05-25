@@ -35,9 +35,9 @@ class BinOp(Node):
         elif self.value == "||":
             return ("Int",self.children[0].Evaluate(scope)[1] or self.children[1].Evaluate(scope)[1])
         elif self.value == ">":
-            return ("Int",int(self.children[0].Evaluate()[1] > self.children[1].Evaluate()[1]))
+            return ("Int",int(self.children[0].Evaluate(scope)[1] > self.children[1].Evaluate(scope)[1]))
         elif self.value == "<":
-            return ("Int",int(self.children[0].Evaluate()[1] < self.children[1].Evaluate()[1]))
+            return ("Int",int(self.children[0].Evaluate(scope)[1] < self.children[1].Evaluate(scope)[1]))
         else:
             return ("Int",int(self.children[0].Evaluate(scope)[1] / self.children[1].Evaluate(scope)[1]))
 
@@ -76,7 +76,7 @@ class PrintNode(Node):
 
 class Assignement(Node):
     def Evaluate(self, scope):
-        value = self.children[1].Evaluate()
+        value = self.children[1].Evaluate(scope)
         if self.children[0].value in scope.table:
             if value[0] != scope.table[self.children[0].value][0]: 
                 raise Exception("Trying to assign different variable type")
@@ -90,7 +90,7 @@ class Block(Node):
             child.Evaluate(scope)
 
 class ReadlnNode(Node):
-    def Evaluate(self):
+    def Evaluate(self, scope):
         return ("Int",int(input()))
     
 class WhileNode(Node):
@@ -127,24 +127,24 @@ class VarDec(Node):
 
 class FuncDec(Node):
     #children[0]: Identifier || children[1]: [VarDec, VarDec, ...]  || children[2]: Block 
-    def Evaluate(self):
+    def Evaluate(self, scope):
         if len(self.children) != 3:
             raise Exception("Error in function declaration")
         func_table.setter(self.children[0].value, (self.value, self))
 
 class FuncCall(Node):
     #children: [arg, arg, arg, ...]
-    def Evaluate(self):
-        func_entry = FuncTable.getter(self.value) # Retorna: ("nome_func", FuncNode)
+    def Evaluate(self, scope):
+        func_entry = func_table.getter(self.value) # Retorna: ("nome_func", FuncNode)
         if len(self.children) != len(func_entry[1].children[1]):
             raise Exception("Number of arguments from function declaration and function call differ")
         func_scope = SymbolTable()
         for arg_dec, arg_val in zip(func_entry[1].children[1], self.children):
             arg_dec.Evaluate(func_scope)                         # Eval dos vardec (coloca na nova st) [arg = VarDec]
-            func_scope.setter(arg_dec.children[0].value, arg_val.Evaluate())  # Eval no escopo global
+            func_scope.setter(arg_dec.children[0].value, arg_val.Evaluate(scope))  # Eval no escopo global
         return func_entry[1].children[2].Evaluate(func_scope)    # Eval do bloco em escopo local
                                                                  # Espera um "return" dentro do bloco
 
 class RetNode(Node):
     def Evaluate(self, scope):
-        return self.children.Evaluate(scope)    # Deve fazer eval em escopo local
+        return self.children[0].Evaluate(scope)    # Deve fazer eval em escopo local
