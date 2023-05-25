@@ -293,6 +293,7 @@ class Parser(AuxFunctions):
             token_type = self.tokenizer.next.type
             if token_type == "==" or token_type == ">" or token_type == "<":
                 op = self.tokenizer.next.type
+                self.tokenizer.selectNext()
                 ret_val = self.parseExpression()
                 val = BinOp(op,[val, ret_val])
             else:
@@ -307,10 +308,12 @@ class Parser(AuxFunctions):
             token_type = self.tokenizer.next.type
             if token_type == "+" or token_type == "-" or token_type == "||":
                 op = self.tokenizer.next.type
+                self.tokenizer.selectNext()
                 ret_val = self.parseTerm()
                 val = BinOp(op,[val, ret_val])
             elif token_type == ".":
                 op = self.tokenizer.next.type
+                self.tokenizer.selectNext()
                 ret_val = self.parseTerm()
                 val = ConcOp(None,[val, ret_val])
             else:
@@ -328,6 +331,7 @@ class Parser(AuxFunctions):
                 raise Exception("A number cannot be followed by another number")
             if token_type == '*' or token_type == '/' or token_type == '&&':
                 op = self.tokenizer.next.type
+                self.tokenizer.selectNext()
                 ret_val = self.parseFactor()
                 val = BinOp(op, [val, ret_val])
             else:
@@ -345,11 +349,13 @@ class Parser(AuxFunctions):
             self.tokenizer.selectNext()
         elif token_type == "+" or token_type == "-" or token_type == "!": 
             op_value = token_type
+            self.tokenizer.selectNext()
             ret_val = self.parseFactor()
             ret_node = UnOp(op_value, [ret_val])
-            self.tokenizer.selectNext()
+            #self.tokenizer.selectNext()
         elif token_type == "(":
             self.tokenizer.selectNext()
+            # print(self.tokenizer.next.type)
             ret_val = self.parseRelExpression()
             if self.tokenizer.next.type != ")":
                 raise Exception("Must close parenthesis")
@@ -380,6 +386,7 @@ class Parser(AuxFunctions):
                             raise Exception("Arguments must be separated by commas")
                         self.tokenizer.selectNext()
                 ret_node = call_node
+                self.tokenizer.selectNext()
             else:
                 ret_node = ident_node
         return ret_node
